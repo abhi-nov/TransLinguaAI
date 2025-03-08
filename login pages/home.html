@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Transligua - AI Translator</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+        body {
+            background-color: #080710;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            height: 100vh;
+            padding: 20px;
+            
+        }
+        h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        .main-container {
+            display: flex;
+            width: 100%;
+            height: 80vh;
+            
+        }
+        .left-container, .right-container {
+            width: 50%;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 60vh;
+            padding: 15px;
+            font-size: 18px;
+            border-radius: 5px;
+            border: none;
+            resize: none;
+        }
+        .select-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        select, button {
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+            flex: 1;
+        }
+        button {
+            background: linear-gradient(90deg, #1845ad, #23a2f6);
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            width: 50%;
+            margin-top: 9px;
+        }
+        #translate{
+            width: 100%;
+            background: linear-gradient(90deg, #ff512f, #f09819);
+            margin-bottom: 20px;
+        }
+
+        #translate:hover{
+            background: linear-gradient(90deg, #1845ad, #23a2f6);
+        }
+
+        button:hover {
+            background: linear-gradient(90deg, #ff512f, #f09819);
+        }
+        #output {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            font-size: 18px;
+            height: 60vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Transligua - AI Translator</h1>
+    <div class="main-container">
+        <div class="left-container">
+            <textarea id="inputText" placeholder="Enter text to translate..."></textarea>
+            <input type="file" id="uploadFile" accept=".txt, .pdf, .docx" />
+            <button onclick="uploadFile()">Upload Document</button>
+
+            <button id="audioBtn">🎤 Speak</button>
+            <div class="select-container">
+                <select id="targetLanguage">
+                    <option value="English">English</option>
+                    <option value="French">French</option>
+                    <option value="Spanish">Spanish</option>
+                    <option value="German">German</option>
+                    <option value="Chinese">Chinese</option>
+                    <option value="Japanese">Japanese</option>
+                    <option value="Korean">Korean</option>
+                    <option value="Hindi">Hindi</option>
+                </select>
+                <select id="outputStructure">
+                    <option value="formal and educational">Education</option>
+                    <option value="informal and conversational">Personal</option>
+                    <option value="formal and professional">Professional</option>
+                </select>
+            </div>
+            <button id="translate"  onclick="translateText()">Translate</button>
+            <!-- Upload Section -->
+           
+        </div>
+        <div class="right-container">
+            <div id="output">Translation will appear here...</div>
+            <div class="actions">
+                <button id="ttsButton">🔊 Speak Output</button>
+                <button id="copyButton">📋 Copy</button>
+                <button id="downloadTxt">📄 Download .txt</button>
+                <button id="downloadPdf">📕 Download .pdf</button>
+                <button id="downloadDocx">📘 Download .docx</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function translateText() {
+            const text = document.getElementById("inputText").value;
+            const targetLanguage = document.getElementById("targetLanguage").value;
+            const outputStructure = document.getElementById("outputStructure").value;
+            
+            const response = await fetch("http://127.0.0.1:5000/translate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text, targetLanguage, outputStructure })
+            });
+            
+            const result = await response.json();
+            document.getElementById("output").innerText = result.translation || "Translation failed.";
+        }
+
+        document.getElementById("audioBtn").addEventListener("click", function () {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+
+            recognition.onstart = function () {
+                document.getElementById("audioBtn").innerText = "🎤 Listening...";
+            };
+
+            recognition.onspeechend = function () {
+                document.getElementById("audioBtn").innerText = "🎤 Speak";
+                recognition.stop();
+            };
+
+            recognition.onresult = function (event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById("inputText").value = transcript;
+            };
+
+            recognition.onerror = function (event) {
+                alert("Speech recognition error: " + event.error);
+            };
+
+            recognition.start();
+        });
+
+        document.getElementById("ttsButton").addEventListener("click", function () {
+            const outputText = document.getElementById("output").innerText;
+            if (!outputText || outputText === "Translation will appear here...") {
+                alert("No text to read!");
+                return;
+            }
+
+            const speech = new SpeechSynthesisUtterance(outputText);
+            speech.lang = 'en-US';
+            speech.volume = 1;
+            speech.rate = 1;
+            speech.pitch = 1;
+
+            window.speechSynthesis.speak(speech);
+        });
+
+        document.getElementById("copyButton").addEventListener("click", function () {
+            const outputText = document.getElementById("output").innerText;
+            navigator.clipboard.writeText(outputText).then(() => alert("Copied to clipboard!"));
+        });
+
+        document.getElementById("downloadTxt").addEventListener("click", function () {
+            const outputText = document.getElementById("output").innerText;
+            const blob = new Blob([outputText], { type: "text/plain" });
+            saveAs(blob, "translation.txt");
+        });
+
+        document.getElementById("downloadPdf").addEventListener("click", function () {
+            const outputText = document.getElementById("output").innerText;
+            const docDefinition = { content: [outputText] };
+            pdfMake.createPdf(docDefinition).download("translation.pdf");
+        });
+
+        document.getElementById("downloadDocx").addEventListener("click", function () {
+            const outputText = document.getElementById("output").innerText;
+            const blob = new Blob([outputText], { type: "application/msword" });
+            saveAs(blob, "translation.docx");
+        });
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('uploadFile');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please select a file to upload.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('http://127.0.0.1:5000/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+            if (result.text) {
+                document.getElementById('inputText').value = result.text;
+            } else {
+                alert('Error uploading file: ' + result.error);
+            }
+        }
+    </script>
+</body>
+</html>
